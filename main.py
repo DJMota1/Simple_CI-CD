@@ -1,35 +1,42 @@
+import os
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from sqlmodel import SQLModel, Field, Session, create_engine, select
 from typing import Optional
 
-app = FastAPI(title="Tasks API", version="1.0.0")
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 
-class Task(BaseModel):
-    id: Optional[int] = None
+class Task(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     done: bool = False
 
-tasks: list[Task] = []
-next_id = 1
+app = FastAPI(title="Tasks API", version="1.0.0")
+
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
 
 @app.post("/tasks", response_model=Task)
 def create_task(task: Task):
-    global next_id
-    task.id = next_id
-    next_id += 1
-    tasks.append(task)
-    return task
+    with Session(engine) as session:
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+        return task
 
 @app.get("/tasks", response_model=list[Task])
 def list_tasks():
-    return tasks
+    with Session(engine) as session:
+        tasks = session.exec(select(Task)).all()
+        return tasks
 
 @app.delete("/tasks/{task_id}")
 def delete_task(task_id: int):
-    global tasks
-    for t in tasks:
-        if t.id == task_id:
-            tasks = [t for t in tasks if t.id != task_id]
-            return {"message": "Task deleted"}
-    raise HTTPException(status_code=404, detail="Task not found")
-
+    with Session(engine) as session:
+        task = session.get(Task, task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        session.delete(task)
+        session.commit()
+        return {"message": "Task deleted"}
