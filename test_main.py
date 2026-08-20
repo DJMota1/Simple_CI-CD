@@ -30,7 +30,7 @@ def client_fixture(session: Session):
 
 
 def test_create_task(client: TestClient):
-    response = client.post("/tasks", json={"title": "Comprar pão"})
+    response = client.post("/tasks", json={"title": "Comprar leite"})
     data = response.json()
 
     assert response.status_code == 200
