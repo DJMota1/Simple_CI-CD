@@ -23,6 +23,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Tasks API", version="1.0.0", lifespan=lifespan)
 
+@app.get("/")
+def root():
+    return {"message": "Tasks API is running"}
+
 def get_session():
     with Session(engine) as session:
         yield session
