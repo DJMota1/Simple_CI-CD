@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from typing import Optional
 from contextlib import asynccontextmanager
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -22,6 +23,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Tasks API", version="1.0.0", lifespan=lifespan)
+
+Instrumentator().instrument(app).expose(app)
 
 @app.get("/")
 def root():
